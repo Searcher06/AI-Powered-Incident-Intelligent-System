@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "node src/server.js",
     "start": "node src/server.js",
+    "smoke": "node scripts/test_smoke.js",
+    "demo:post": "node demo/post_sample_reports.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

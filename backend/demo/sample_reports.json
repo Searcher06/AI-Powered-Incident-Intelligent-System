@@ -1,0 +1,29 @@
+[
+  {
+    "sourceType": "whatsapp",
+    "reporterType": "citizen",
+    "description": "Flooding on Main St near the bridge, water rising fast.",
+    "language": "en",
+    "location": { "text": "Main St Bridge", "coordinates": { "type": "Point", "coordinates": [ -122.4194, 37.7749 ] } },
+    "timestamp": "2026-07-29T08:00:00Z",
+    "mediaAssets": [ { "url": "https://example.com/image1.jpg", "mimeType": "image/jpeg" } ]
+  },
+  {
+    "sourceType": "facebook",
+    "reporterType": "citizen",
+    "description": "Road washed out near 5th Ave, possible landslide.",
+    "language": "en",
+    "location": { "text": "5th Ave", "coordinates": { "type": "Point", "coordinates": [ -122.4180, 37.7760 ] } },
+    "timestamp": "2026-07-29T08:12:00Z",
+    "mediaAssets": [ { "url": "https://example.com/image2.jpg", "mimeType": "image/jpeg" } ]
+  },
+  {
+    "sourceType": "officer",
+    "reporterType": "field_officer",
+    "description": "Bridge blocked due to flooding; traffic diverted.",
+    "language": "en",
+    "location": { "text": "Main St Bridge", "coordinates": { "type": "Point", "coordinates": [ -122.4195, 37.77495 ] } },
+    "timestamp": "2026-07-29T08:22:00Z",
+    "mediaAssets": [ { "url": "https://example.com/image3.jpg", "mimeType": "image/jpeg" } ]
+  }
+]
