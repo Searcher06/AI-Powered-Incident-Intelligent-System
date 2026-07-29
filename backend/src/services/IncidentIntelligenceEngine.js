@@ -1,7 +1,7 @@
-import ReportAnalyzer from './ReportAnalyzer.js';
-import CandidateFinder from './CandidateFinder.js';
-import FusionEngine from './FusionEngine.js';
-import BriefingGenerator from './BriefingGenerator.js';
+import ReportAnalyzer from './gemma/ReportAnalyzer.js';
+import CandidateFinder from './incident/CandidateFinder.js';
+import FusionEngine from './gemma/FusionEngine.js';
+import BriefingGenerator from './gemma/BriefingGenerator.js';
 import TimelineGenerator from './TimelineGenerator.js';
 
 // Orchestrator: runs the full pipeline for a given reportId
