@@ -20,6 +20,7 @@ async function analyzeReport(reportId) {
   });
 
   const startMs = Date.now();
+  // Pass imageUrl so the prompt includes it for context (text description)
   const { parsed } = await callModelStructured({ prompt, temperature: 0.0, schema: REPORT_ANALYSIS_SCHEMA });
   const processingMs = Date.now() - startMs;
 

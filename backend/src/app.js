@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import reportsRouter from './routes/reports.js';
 import incidentsRouter from './routes/incidents.js';
+import uploadRouter from './routes/upload.js';
 
 const app = express();
 
@@ -18,6 +19,7 @@ app.get('/health', (_req, res) => {
 });
 
 // API routes
+app.use('/upload', uploadRouter);
 app.use('/reports', reportsRouter);
 app.use('/incidents', incidentsRouter);
 

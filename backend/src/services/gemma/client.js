@@ -58,18 +58,22 @@ function parseGemmaOutput(raw, schema) {
 
     for (const name of namesToTry) {
       // Match:  *   `fieldName`: ...  or  *   fieldName: ...  or  fieldName: ...
+      // Use the LAST match — the model reasons first, then gives its answer at the bottom.
+      // Taking the first match would grab the prompt's own field descriptions.
       const pattern = new RegExp(
         `(?:\\*\\s+)?\`?${name}\`?\\s*:\\s*(.+)`,
-        'i'
+        'gi'
       );
-      const match = raw.match(pattern);
-      if (match) {
-        rawVal = match[1].trim()
-          .replace(/^\*\*/, '').replace(/\*\*$/, '')
-          .replace(/^"/, '').replace(/"$/, '')
-          .replace(/^'/, '').replace(/'$/, '');
-        break;
-      }
+      const allMatches = [...raw.matchAll(pattern)];
+      if (allMatches.length === 0) continue;
+
+      // Take the last match — it's always the model's final answer
+      const lastMatch = allMatches[allMatches.length - 1];
+      rawVal = lastMatch[1].trim()
+        .replace(/^\*\*/, '').replace(/\*\*$/, '')
+        .replace(/^"/, '').replace(/"$/, '')
+        .replace(/^'/, '').replace(/'$/, '');
+      break;
     }
 
     if (!rawVal) continue;
