@@ -3,6 +3,55 @@ import { callModelStructured, REPORT_ANALYSIS_SCHEMA } from './client.js';
 import { buildReportAnalysisPrompt } from '../../prompts/reportAnalysis.prompt.js';
 import { ReportUnderstandingSchema } from './schemas.js';
 
+/**
+ * Sanitize a raw category string from Gemma into a clean slug.
+ *
+ * Gemma sometimes returns: power_outage" (National grid collapse is a massive power outage).
+ * We want just:            power_outage
+ */
+const CATEGORY_ALIASES = {
+  flooding:                  'flood',
+  floods:                    'flood',
+  'power outage':            'power_outage',
+  poweroutage:               'power_outage',
+  'power failure':           'power_outage',
+  'power_failure':           'power_outage',
+  infrastructure:            'infrastructure_damage',
+  'infrastructure failure':  'infrastructure_damage',
+  road:                      'road_blockage',
+  roads:                     'road_blockage',
+  'road blockage':           'road_blockage',
+  fire:                      'fire',
+  medical:                   'medical',
+  crime:                     'crime',
+  weather:                   'weather',
+  earthquake:                'earthquake',
+  hazmat:                    'hazmat',
+  protest:                   'protest',
+  security:                  'security',
+};
+
+function sanitizeCategory(raw) {
+  if (!raw || typeof raw !== 'string') return 'unknown';
+
+  // Stop at first quote, paren, comma, period or space — take only the slug token
+  const firstToken = raw
+    .split(/["'(),.\s]/)[0]
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/g, '_')
+    .replace(/__+/g, '_')
+    .replace(/^_|_$/g, '');
+
+  if (CATEGORY_ALIASES[firstToken]) return CATEGORY_ALIASES[firstToken];
+
+  // Also try the full raw string (before first special char) against aliases
+  const rawNormalized = raw.toLowerCase().split(/["'(),./]/)[0].trim();
+  if (CATEGORY_ALIASES[rawNormalized]) return CATEGORY_ALIASES[rawNormalized];
+
+  return firstToken || 'unknown';
+}
+
 async function analyzeReport(reportId) {
   const report = await Report.findById(reportId);
   if (!report) throw new Error('Report not found');
@@ -20,7 +69,6 @@ async function analyzeReport(reportId) {
   });
 
   const startMs = Date.now();
-  // Pass imageUrl so the prompt includes it for context (text description)
   const { parsed } = await callModelStructured({ prompt, temperature: 0.0, schema: REPORT_ANALYSIS_SCHEMA });
   const processingMs = Date.now() - startMs;
 
@@ -36,14 +84,18 @@ async function analyzeReport(reportId) {
   };
 
   const data = parsed || fallback;
-  const result = ReportUnderstandingSchema.safeParse(data);
 
   const understanding = {
     model: process.env.GEMMA_MODEL_VERSION || 'gemma-4',
     modelVersion: process.env.GEMMA_MODEL_VERSION || 'gemma-4',
-    category: data.category || fallback.category,
-    severity: ['low', 'medium', 'high', 'critical'].includes(data.severity) ? data.severity : fallback.severity,
-    confidence: typeof data.confidence === 'number' ? Math.min(1, Math.max(0, data.confidence)) : fallback.confidence,
+    // Always sanitize — Gemma often appends reasoning text after the value
+    category: sanitizeCategory(data.category || fallback.category),
+    severity: ['low', 'medium', 'high', 'critical'].includes(data.severity)
+      ? data.severity
+      : fallback.severity,
+    confidence: typeof data.confidence === 'number'
+      ? Math.min(1, Math.max(0, data.confidence))
+      : fallback.confidence,
     summary: data.summary || fallback.summary,
     tags: Array.isArray(data.tags) ? data.tags : [],
     affectedInfrastructure: Array.isArray(data.affectedInfrastructure) ? data.affectedInfrastructure : [],

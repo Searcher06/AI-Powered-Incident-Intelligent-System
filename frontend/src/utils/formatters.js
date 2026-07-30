@@ -28,7 +28,10 @@ export const formatSeverity = (str) => {
 
 export const formatCategory = (str) => {
   if (!str) return '—';
-  return str
+  // Sanitize: take only the first clean token before any quote/paren/space
+  const clean = str.split(/["'(),.\s]/)[0].trim().toLowerCase()
+    .replace(/[^a-z0-9_]/g, '_').replace(/__+/g, '_').replace(/^_|_$/g, '');
+  return clean
     .replace(/_/g, ' ')
     .replace(/\b\w/g, (c) => c.toUpperCase());
 };

@@ -3,6 +3,14 @@ import { callModelStructured, FUSION_SCHEMA } from './client.js';
 import { buildFusionPrompt } from '../../prompts/fusion.prompt.js';
 import { FusionDecisionSchema } from './schemas.js';
 
+// Re-use the same sanitizer so category is always a clean slug
+function sanitizeCategory(raw) {
+  if (!raw || typeof raw !== 'string') return 'other';
+  const token = raw.split(/["'(),.\s]/)[0].trim().toLowerCase()
+    .replace(/[^a-z0-9_]/g, '_').replace(/__+/g, '_').replace(/^_|_$/g, '');
+  return token || 'other';
+}
+
 async function fuse(reportId, candidates = []) {
   const report = await Report.findById(reportId);
   if (!report) throw new Error('Report not found');
@@ -62,7 +70,7 @@ async function fuse(reportId, candidates = []) {
   if (decisionRecord.decisionType === 'create_new_incident') {
     const incident = await Incident.create({
       title: report.understanding?.summary || report.description?.slice(0, 100) || 'New incident',
-      category: report.understanding?.category || 'other',
+      category: sanitizeCategory(report.understanding?.category) || 'other',
       severity: report.understanding?.severity || 'medium',
       confidence: report.understanding?.confidence || 0.5,
       summary: report.understanding?.summary || '',

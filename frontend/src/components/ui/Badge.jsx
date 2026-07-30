@@ -45,14 +45,15 @@ const Badge = ({ variant, value, className }) => {
     return (
       <span
         className={clsx(
-          'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-[#eceef0] text-[#434655]',
+          'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-[#eceef0] text-[#434655] max-w-[160px] truncate',
           className
         )}
+        title={formatCategory(value)}
       >
-        <span className="material-symbols-outlined" style={{ fontSize: '12px' }}>
+        <span className="material-symbols-outlined flex-shrink-0" style={{ fontSize: '12px' }}>
           {icon}
         </span>
-        {formatCategory(value)}
+        <span className="truncate">{formatCategory(value)}</span>
       </span>
     );
   }
