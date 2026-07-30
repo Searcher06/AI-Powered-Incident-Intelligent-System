@@ -1,83 +1,122 @@
 import { FusionDecision, Incident, Report } from '../../models/index.js';
+import { callModelStructured, FUSION_SCHEMA } from './client.js';
+import { buildFusionPrompt } from '../../prompts/fusion.prompt.js';
+import { FusionDecisionSchema } from './schemas.js';
 
-// Simple FusionEngine that uses heuristics + placeholder Gemma compare
-async function fuse(reportId, candidates = [], gemmaClient = null) {
+async function fuse(reportId, candidates = []) {
   const report = await Report.findById(reportId);
   if (!report) throw new Error('Report not found');
 
-  const start = Date.now();
+  const prompt = buildFusionPrompt({
+    reportUnderstanding: report.understanding || {},
+    candidateSummaries: candidates.map((c) => ({
+      _id: c._id,
+      title: c.title,
+      category: c.category,
+      severity: c.severity,
+      summary: c.summary,
+      location: c.location,
+    })),
+  });
 
-  // Very simple heuristic: if any candidate is within same category (if report.understanding.category is set and matches), pick it.
-  const category = report.understanding?.category || null;
-  let selected = null;
-  if (category) {
-    selected = candidates.find((c) => c.category && c.category === category);
-  }
+  const { parsed } = await callModelStructured({ prompt, temperature: 0.0, schema: FUSION_SCHEMA });
 
-  // fallback: pick the first candidate if exists with naive confidence
-  if (!selected && candidates.length > 0) {
-    selected = candidates[0];
-  }
+  const fallback = {
+    decisionType: candidates.length ? 'merge_with_existing' : 'create_new_incident',
+    selectedCandidateIndex: candidates.length ? 0 : -1,
+    confidence: 0.6,
+    reasoning: 'fallback heuristic — model output could not be parsed',
+    evidence: [],
+  };
 
-  const decision = {
+  const data = parsed || fallback;
+
+  // Validate and coerce
+  const decisionType = ['merge_with_existing', 'create_new_incident', 'no_change'].includes(data.decisionType)
+    ? data.decisionType
+    : fallback.decisionType;
+
+  const selectedCandidateIndex = typeof data.selectedCandidateIndex === 'number'
+    ? data.selectedCandidateIndex
+    : fallback.selectedCandidateIndex;
+
+  const selected = selectedCandidateIndex >= 0 ? candidates[selectedCandidateIndex] : null;
+
+  const decisionRecord = await FusionDecision.create({
     reportId,
-    decisionType: selected ? 'merge_with_existing' : 'create_new_incident',
+    decisionType,
     candidateIncidentIds: candidates.map((c) => c._id),
-    selectedIncidentId: selected ? selected._id : null,
-    confidence: selected ? 0.8 : 0.6,
-    reasoning: selected ? `Matched candidate incident ${selected._id}` : 'No candidate matched, creating new incident',
-    evidence: selected ? ['candidate_location', 'category_match'] : ['no_candidates'],
-    processingTimeMs: Date.now() - start,
+    selectedIncidentId: selected?._id || null,
+    confidence: typeof data.confidence === 'number' ? data.confidence : fallback.confidence,
+    reasoning: data.reasoning || fallback.reasoning,
+    evidence: Array.isArray(data.evidence) ? data.evidence : [],
+    processingTimeMs: 0,
     modelVersion: process.env.GEMMA_MODEL_VERSION || 'gemma-4',
     shouldRegenerateBriefing: true,
     shouldCreateTimelineEvent: true,
-  };
+  });
 
-  const saved = await FusionDecision.create(decision);
+  const severities = ['low', 'medium', 'high', 'critical'];
 
-  // Apply decision: create or update incident and attach report.incidentId
-  if (decision.decisionType === 'create_new_incident') {
+  // ── Create new incident ──────────────────────────────────────────────────
+  if (decisionRecord.decisionType === 'create_new_incident') {
     const incident = await Incident.create({
-      title: report.understanding?.summary || 'New incident',
-      category: report.understanding?.category || '',
+      title: report.understanding?.summary || report.description?.slice(0, 100) || 'New incident',
+      category: report.understanding?.category || 'other',
       severity: report.understanding?.severity || 'medium',
       confidence: report.understanding?.confidence || 0.5,
       summary: report.understanding?.summary || '',
       recommendedResponse: report.understanding?.recommendedResponse || '',
       location: report.location || {},
+      reportCount: 1,
     });
-    saved.selectedIncidentId = incident._id;
-    await saved.save();
+
+    decisionRecord.selectedIncidentId = incident._id;
+    await decisionRecord.save();
 
     report.incidentId = incident._id;
     report.status = 'merged';
+    report.pipeline = report.pipeline || {};
+    report.pipeline.matchedAt = new Date();
+    report.pipeline.completedAt = new Date();
     await report.save();
 
-    return { decision: saved, incident };
-  } else if (decision.decisionType === 'merge_with_existing') {
-    // Update incident conservatively
-    const incident = await Incident.findById(decision.selectedIncidentId);
+    return { decision: decisionRecord, incident };
+  }
+
+  // ── Merge with existing incident ─────────────────────────────────────────
+  if (decisionRecord.decisionType === 'merge_with_existing') {
+    const incident = selected ? await Incident.findById(selected._id) : null;
     if (incident) {
-      // simple merge: bump confidence/severity if needed
-      incident.confidence = Math.max(incident.confidence || 0, report.understanding?.confidence || 0.5);
-      // if incoming severity is higher, adopt it
-      const severities = ['low', 'medium', 'high', 'critical'];
       const incomingIdx = severities.indexOf(report.understanding?.severity || 'medium');
       const currentIdx = severities.indexOf(incident.severity || 'medium');
-      if (incomingIdx > currentIdx) incident.severity = report.understanding?.severity;
-      incident.summary = incident.summary || report.understanding?.summary || incident.summary;
+      const prevSeverity = incident.severity;
+      if (incomingIdx > currentIdx) incident.severity = report.understanding.severity;
+
+      incident.confidence = Math.max(incident.confidence || 0, report.understanding?.confidence || 0.5);
+      incident.reportCount = (incident.reportCount || 1) + 1;
+      if (incident.severity === 'critical') incident.status = 'critical';
       incident.updatedAt = new Date();
       await incident.save();
 
       report.incidentId = incident._id;
       report.status = 'merged';
+      report.pipeline = report.pipeline || {};
+      report.pipeline.matchedAt = new Date();
+      report.pipeline.completedAt = new Date();
       await report.save();
 
-      return { decision: saved, incident };
+      return { decision: decisionRecord, incident, prevSeverity };
     }
   }
 
-  return { decision: saved, incident: null };
+  // ── no_change ────────────────────────────────────────────────────────────
+  report.status = 'completed';
+  report.pipeline = report.pipeline || {};
+  report.pipeline.completedAt = new Date();
+  await report.save();
+
+  return { decision: decisionRecord, incident: null };
 }
 
 export default { fuse };

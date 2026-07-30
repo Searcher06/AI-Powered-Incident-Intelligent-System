@@ -1,46 +1,62 @@
 import { Report } from '../../models/index.js';
+import { callModelStructured, REPORT_ANALYSIS_SCHEMA } from './client.js';
+import { buildReportAnalysisPrompt } from '../../prompts/reportAnalysis.prompt.js';
+import { ReportUnderstandingSchema } from './schemas.js';
 
-// Minimal ReportAnalyzer: wraps Gemma call (mocked here) and writes Report.understanding
-async function analyzeReport(reportId, gemmaClient = null) {
+async function analyzeReport(reportId) {
   const report = await Report.findById(reportId);
   if (!report) throw new Error('Report not found');
 
-  // Mark started
   report.pipeline = report.pipeline || {};
   report.pipeline.startedAt = report.pipeline.startedAt || new Date();
   report.status = 'analyzing';
   await report.save();
 
-  // TODO: Replace with real Gemma integration. For now, create a simple understanding.
-  const start = Date.now();
-  const understanding = {
-    model: 'gemma-4',
-    modelVersion: process.env.GEMMA_MODEL_VERSION || 'gemma-4',
+  const imageUrl = report.mediaAssets?.[0]?.url || '';
+  const prompt = buildReportAnalysisPrompt({
+    imageUrl,
+    description: report.description || '',
+    location: report.location || {},
+  });
+
+  const startMs = Date.now();
+  const { parsed } = await callModelStructured({ prompt, temperature: 0.0, schema: REPORT_ANALYSIS_SCHEMA });
+  const processingMs = Date.now() - startMs;
+
+  const fallback = {
     category: 'unknown',
     severity: 'medium',
-    confidence: 0.6,
-    summary: report.description ? report.description.slice(0, 200) : 'Image-based report',
+    confidence: 0.5,
+    summary: report.description?.slice(0, 200) || 'Report submitted without description',
     tags: [],
     affectedInfrastructure: [],
     affectedServices: [],
     recommendedResponse: '',
-    rawOutput: {},
+  };
+
+  const data = parsed || fallback;
+  const result = ReportUnderstandingSchema.safeParse(data);
+
+  const understanding = {
+    model: process.env.GEMMA_MODEL_VERSION || 'gemma-4',
+    modelVersion: process.env.GEMMA_MODEL_VERSION || 'gemma-4',
+    category: data.category || fallback.category,
+    severity: ['low', 'medium', 'high', 'critical'].includes(data.severity) ? data.severity : fallback.severity,
+    confidence: typeof data.confidence === 'number' ? Math.min(1, Math.max(0, data.confidence)) : fallback.confidence,
+    summary: data.summary || fallback.summary,
+    tags: Array.isArray(data.tags) ? data.tags : [],
+    affectedInfrastructure: Array.isArray(data.affectedInfrastructure) ? data.affectedInfrastructure : [],
+    affectedServices: Array.isArray(data.affectedServices) ? data.affectedServices : [],
+    recommendedResponse: data.recommendedResponse || '',
+    rawOutput: data,
     generatedAt: new Date(),
   };
 
-  // simple heuristics: if description contains 'flood' -> flood
-  if (report.description && /flood|flooding|water/i.test(report.description)) {
-    understanding.category = 'flood';
-    understanding.severity = 'high';
-    understanding.confidence = 0.85;
-    understanding.summary = understanding.summary + ' (detected flood)';
-  }
-
   report.understanding = understanding;
+  report.status = 'matching';
   report.pipeline.analyzedAt = new Date();
   await report.save();
 
-  const processingMs = Date.now() - start;
   return { understanding, processingMs };
 }
 

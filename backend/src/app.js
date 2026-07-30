@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import reportsRouter from './routes/reports.js';
+import incidentsRouter from './routes/incidents.js';
 
 const app = express();
 
@@ -18,5 +19,6 @@ app.get('/health', (_req, res) => {
 
 // API routes
 app.use('/reports', reportsRouter);
+app.use('/incidents', incidentsRouter);
 
 export default app;

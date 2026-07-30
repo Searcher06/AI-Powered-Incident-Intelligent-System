@@ -19,6 +19,7 @@ const incidentSchema = new Schema(
     },
     summary: { type: String, default: '' },
     recommendedResponse: { type: String, default: '' },
+    reportCount: { type: Number, default: 1, min: 1 },
     location: {
       text: { type: String, default: '' },
       coordinates: {

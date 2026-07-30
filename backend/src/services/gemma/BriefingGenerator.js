@@ -1,32 +1,39 @@
-import { Briefing, Report, Incident } from '../../models/index.js';
+import { callModelStructured, BRIEFING_SCHEMA } from './client.js';
+import { buildBriefingPrompt } from '../../prompts/briefing.prompt.js';
 
-// Simple briefing generator using existing report summaries
 async function generateBriefing(incidentId) {
+  const { Incident, Report, Briefing } = await import('../../models/index.js');
   const incident = await Incident.findById(incidentId);
   if (!incident) throw new Error('Incident not found');
 
-  // For MVP: gather recent reports and stitch a short briefing
   const reports = await Report.find({ incidentId }).sort({ timestamp: -1 }).limit(5).lean();
 
-  const lines = [];
-  lines.push(`Incident: ${incident.title || 'Untitled'}`);
-  lines.push(`Severity: ${incident.severity}  Confidence: ${incident.confidence}`);
-  lines.push('Recent reports:');
-  for (const r of reports) {
-    lines.push(`- ${new Date(r.timestamp).toISOString()}: ${r.understanding?.summary || r.description || ''}`);
-  }
+  const prompt = buildBriefingPrompt({
+    incidentSummary: {
+      title: incident.title,
+      summary: incident.summary,
+      severity: incident.severity,
+      confidence: incident.confidence,
+    },
+    recentReports: reports.map((r) => ({
+      _id: r._id,
+      summary: r.understanding?.summary || r.description || '',
+    })),
+  });
 
-  lines.push('Recommended response:');
-  lines.push(incident.recommendedResponse || 'Inspect on site');
+  const { parsed } = await callModelStructured({ prompt, temperature: 0.0, schema: BRIEFING_SCHEMA });
 
-  const text = lines.join('\n');
+  const text = parsed?.text
+    || `${incident.title}. Severity: ${incident.severity}. ${incident.summary} Recommended: ${incident.recommendedResponse || 'Inspect on site.'}`;
+
+  const confidence = typeof parsed?.confidence === 'number' ? parsed.confidence : (incident.confidence || 0.5);
 
   const briefing = await Briefing.create({
     incidentId,
     text,
     generatedBy: process.env.GEMMA_MODEL_VERSION || 'gemma-4',
     basedOnReportIds: reports.map((r) => r._id),
-    confidence: incident.confidence || 0.5,
+    confidence,
   });
 
   incident.latestBriefingId = briefing._id;

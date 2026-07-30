@@ -2,11 +2,11 @@ import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import app from './app.js';
 import worker from './worker/worker.js';
+import { MONGODB_URI, PORT as CONFIG_PORT } from './config/index.js';
 
 dotenv.config();
 
-const PORT = process.env.PORT || 5000;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/civiclens';
+const PORT = process.env.PORT || CONFIG_PORT || 5000;
 const SKIP_DB = process.env.SKIP_DB === 'true' || process.env.NODE_ENV === 'test';
 
 async function start() {
@@ -21,8 +21,8 @@ async function start() {
   }
 
   try {
-    await mongoose.connect(MONGO_URI);
-    console.log('MongoDB connected');
+    await mongoose.connect(MONGODB_URI);
+    console.log('MongoDB connected to', MONGODB_URI);
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
       worker.startWorker();
