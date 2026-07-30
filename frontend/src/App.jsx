@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard';
 import IncidentDetail from './pages/IncidentDetail';
 import SubmitReport from './pages/SubmitReport';
 import IntelligenceMap from './pages/IntelligenceMap';
+import IncidentFeed from './pages/IncidentFeed';
 
 export default function App() {
   return (
@@ -15,6 +16,7 @@ export default function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/incidents/:id" element={<IncidentDetail />} />
           <Route path="/map" element={<IntelligenceMap />} />
+          <Route path="/feed" element={<IncidentFeed />} />
         </Route>
         {/* Submit is full-screen — no sidebar layout */}
         <Route path="/submit" element={<SubmitReport />} />

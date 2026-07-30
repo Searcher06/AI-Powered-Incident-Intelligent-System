@@ -1,4 +1,4 @@
-import { NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
 
 const NAV_ITEMS = [
@@ -12,10 +12,9 @@ const NAV_ITEMS = [
   {
     icon: 'list_alt',
     label: 'Incident Feed',
-    to: '/?view=feed',
-    end: false,
+    to: '/feed',
+    end: true,
     available: true,
-    // Same page as dashboard — just scrolls to the table
   },
   {
     icon: 'map',
@@ -45,35 +44,24 @@ const BOTTOM_ITEMS = [
 ];
 
 function NavItem({ item }) {
-  const location = useLocation();
-
   if (!item.available) {
     return (
-      <div className="relative group">
-        <div className="flex items-center gap-3 rounded-lg px-3 py-2 text-xs font-semibold text-[#c3c6d7] cursor-not-allowed select-none">
-          <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>{item.icon}</span>
-          {item.label}
-          <span className="ml-auto text-[10px] font-semibold px-1.5 py-0.5 rounded bg-[#eceef0] text-[#737686]">
-            Soon
-          </span>
-        </div>
+      <div className="flex items-center gap-3 rounded-lg px-3 py-2 text-xs font-semibold text-[#c3c6d7] cursor-not-allowed select-none">
+        <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>{item.icon}</span>
+        {item.label}
+        <span className="ml-auto text-[10px] font-semibold px-1.5 py-0.5 rounded bg-[#eceef0] text-[#737686]">
+          Soon
+        </span>
       </div>
     );
   }
 
-  // "Incident Feed" and "Archive" are query-param variants of Dashboard
+  // Archive is a query-param variant of dashboard
   if (item.to?.includes('?')) {
-    const isActive =
-      location.pathname === '/' && location.search === item.to.replace('/', '');
     return (
       <NavLink
         to={item.to}
-        className={clsx(
-          'flex items-center gap-3 rounded-lg px-3 py-2 text-xs font-semibold transition-colors',
-          isActive
-            ? 'bg-[#d0e1fb] text-[#003ea8] border-l-4 border-[#004ac6]'
-            : 'text-[#434655] hover:bg-[#e6e8ea]'
-        )}
+        className="flex items-center gap-3 rounded-lg px-3 py-2 text-xs font-semibold text-[#434655] hover:bg-[#e6e8ea] transition-colors"
       >
         <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>{item.icon}</span>
         {item.label}
