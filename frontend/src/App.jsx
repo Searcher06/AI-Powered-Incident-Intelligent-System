@@ -4,6 +4,7 @@ import Layout from './components/layout/Layout';
 import Dashboard from './pages/Dashboard';
 import IncidentDetail from './pages/IncidentDetail';
 import SubmitReport from './pages/SubmitReport';
+import IntelligenceMap from './pages/IntelligenceMap';
 
 export default function App() {
   return (
@@ -13,6 +14,7 @@ export default function App() {
         <Route element={<Layout />}>
           <Route path="/" element={<Dashboard />} />
           <Route path="/incidents/:id" element={<IncidentDetail />} />
+          <Route path="/map" element={<IntelligenceMap />} />
         </Route>
         {/* Submit is full-screen — no sidebar layout */}
         <Route path="/submit" element={<SubmitReport />} />
