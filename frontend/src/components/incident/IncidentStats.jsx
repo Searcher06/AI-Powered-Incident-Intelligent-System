@@ -23,14 +23,16 @@ const StatCard = ({ icon, iconBg, iconColor, label, value, extra }) => (
 const IncidentStats = ({ stats, incidents }) => {
   const avgConfidence = useMemo(() => {
     if (!incidents || incidents.length === 0) return null;
+    // Field is `confidence` (0–1), not `aiConfidence`
     const withConf = incidents.filter(
-      (i) => i.aiConfidence !== null && i.aiConfidence !== undefined
+      (i) => i.confidence !== null && i.confidence !== undefined
     );
     if (withConf.length === 0) return null;
     const sum = withConf.reduce((acc, i) => {
-      const v = typeof i.aiConfidence === 'number' && i.aiConfidence <= 1
-        ? i.aiConfidence * 100
-        : i.aiConfidence;
+      // Values are stored as 0–1 floats, convert to percentage
+      const v = typeof i.confidence === 'number' && i.confidence <= 1
+        ? i.confidence * 100
+        : i.confidence;
       return acc + v;
     }, 0);
     return Math.round(sum / withConf.length);

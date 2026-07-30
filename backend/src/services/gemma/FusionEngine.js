@@ -11,6 +11,31 @@ function sanitizeCategory(raw) {
   return token || 'other';
 }
 
+/**
+ * Derive a short, readable incident title (max 72 chars).
+ *
+ * Strategy:
+ * 1. Use the first sentence of the AI summary if it's short enough
+ * 2. Otherwise truncate to the last word boundary before 72 chars
+ * 3. Fall back to the raw description, then a generic label
+ */
+function deriveTitle(understanding, rawDescription) {
+  const MAX = 72;
+  const source = understanding?.summary || rawDescription || '';
+  if (!source) return 'New incident';
+
+  // Take the first complete sentence
+  const sentences = source.match(/[^.!?]+[.!?]?/g) || [source];
+  const first = sentences[0].trim().replace(/\.$/, '');
+
+  if (first.length <= MAX) return first;
+
+  // Truncate at last word boundary before MAX
+  const cut = first.slice(0, MAX);
+  const lastSpace = cut.lastIndexOf(' ');
+  return (lastSpace > 20 ? cut.slice(0, lastSpace) : cut).trim();
+}
+
 async function fuse(reportId, candidates = []) {
   const report = await Report.findById(reportId);
   if (!report) throw new Error('Report not found');
@@ -69,7 +94,7 @@ async function fuse(reportId, candidates = []) {
   // ── Create new incident ──────────────────────────────────────────────────
   if (decisionRecord.decisionType === 'create_new_incident') {
     const incident = await Incident.create({
-      title: report.understanding?.summary || report.description?.slice(0, 100) || 'New incident',
+      title: deriveTitle(report.understanding, report.description),
       category: sanitizeCategory(report.understanding?.category) || 'other',
       severity: report.understanding?.severity || 'medium',
       confidence: report.understanding?.confidence || 0.5,
