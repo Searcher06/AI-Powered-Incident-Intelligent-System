@@ -144,16 +144,30 @@ export const BRIEFING_SCHEMA = [
 ];
 
 /**
- * Call the Gemma model and return the raw text response.
- * Callers should use parseGemmaOutput() to extract structured data.
+ * Call the Gemma model.
+ *
+ * When imageUrl is a Cloudinary URL, sends it as a fileData part for
+ * real multimodal vision analysis. Falls back to text-only otherwise.
  */
-export async function callModel({ prompt, temperature = 0.0 }) {
+export async function callModel({ prompt, temperature = 0.0, imageUrl = null }) {
   const c = getGemmaClient();
   const model = GEMMA_MODEL_VERSION || 'gemma-4-31b-it';
 
+  const parts = [];
+
+  // Only attach image for trusted CDN URLs that the Gemma API can fetch
+  if (imageUrl && isAccessibleImageUrl(imageUrl)) {
+    const mimeType = imageUrl.match(/\.(png)$/i) ? 'image/png'
+      : imageUrl.match(/\.(webp)$/i) ? 'image/webp'
+      : 'image/jpeg';
+    parts.push({ fileData: { mimeType, fileUri: imageUrl } });
+  }
+
+  parts.push({ text: prompt });
+
   const resp = await c.models.generateContent({
     model,
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    contents: [{ role: 'user', parts }],
     generationConfig: {
       temperature,
       maxOutputTokens: 2048,
@@ -164,11 +178,37 @@ export async function callModel({ prompt, temperature = 0.0 }) {
 }
 
 /**
+ * Returns true for publicly accessible CDN image URLs that the Gemma API
+ * can fetch. Rejects localhost, example.com, and other unreachable hosts.
+ */
+function isAccessibleImageUrl(url) {
+  if (!url || typeof url !== 'string') return false;
+  try {
+    const { hostname, protocol } = new URL(url);
+    if (protocol !== 'https:') return false;
+    const blocked = ['localhost', '127.0.0.1', 'example.com', '0.0.0.0'];
+    if (blocked.includes(hostname)) return false;
+    // Trust Cloudinary and other major CDNs
+    const trusted = [
+      'res.cloudinary.com',
+      'cloudinary.com',
+      'storage.googleapis.com',
+      'lh3.googleusercontent.com',
+      'imgur.com',
+      'i.imgur.com',
+    ];
+    return trusted.some((h) => hostname === h || hostname.endsWith('.' + h));
+  } catch (_) {
+    return false;
+  }
+}
+
+/**
  * Call model and parse its output against the given schema.
  * Returns a plain object. Throws only on network/API errors.
  */
-export async function callModelStructured({ prompt, temperature = 0.0, schema }) {
-  const raw = await callModel({ prompt, temperature });
+export async function callModelStructured({ prompt, temperature = 0.0, schema, imageUrl = null }) {
+  const raw = await callModel({ prompt, temperature, imageUrl });
   const parsed = parseGemmaOutput(raw, schema);
   return { raw, parsed };
 }

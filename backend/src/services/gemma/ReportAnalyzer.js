@@ -69,7 +69,12 @@ async function analyzeReport(reportId) {
   });
 
   const startMs = Date.now();
-  const { parsed } = await callModelStructured({ prompt, temperature: 0.0, schema: REPORT_ANALYSIS_SCHEMA });
+  const { parsed } = await callModelStructured({
+    prompt,
+    temperature: 0.0,
+    schema: REPORT_ANALYSIS_SCHEMA,
+    imageUrl, // enables real Gemma vision when image is a Cloudinary URL
+  });
   const processingMs = Date.now() - startMs;
 
   const fallback = {
@@ -85,10 +90,18 @@ async function analyzeReport(reportId) {
 
   const data = parsed || fallback;
 
+  // Gemma sometimes appends validation markers like "(Correct)" or "(Right)"
+  // Strip them from string fields
+  const cleanStr = (s) => typeof s === 'string'
+    ? s.replace(/\s*\((Correct|Right|Yes|OK|✓)\)\s*$/i, '').trim()
+    : s;
+  const cleanArr = (arr) => Array.isArray(arr)
+    ? arr.map((s) => cleanStr(s)).filter(Boolean)
+    : [];
+
   const understanding = {
     model: process.env.GEMMA_MODEL_VERSION || 'gemma-4',
     modelVersion: process.env.GEMMA_MODEL_VERSION || 'gemma-4',
-    // Always sanitize — Gemma often appends reasoning text after the value
     category: sanitizeCategory(data.category || fallback.category),
     severity: ['low', 'medium', 'high', 'critical'].includes(data.severity)
       ? data.severity
@@ -96,11 +109,11 @@ async function analyzeReport(reportId) {
     confidence: typeof data.confidence === 'number'
       ? Math.min(1, Math.max(0, data.confidence))
       : fallback.confidence,
-    summary: data.summary || fallback.summary,
-    tags: Array.isArray(data.tags) ? data.tags : [],
-    affectedInfrastructure: Array.isArray(data.affectedInfrastructure) ? data.affectedInfrastructure : [],
-    affectedServices: Array.isArray(data.affectedServices) ? data.affectedServices : [],
-    recommendedResponse: data.recommendedResponse || '',
+    summary: cleanStr(data.summary || fallback.summary),
+    tags: cleanArr(data.tags),
+    affectedInfrastructure: cleanArr(data.affectedInfrastructure),
+    affectedServices: cleanArr(data.affectedServices),
+    recommendedResponse: cleanStr(data.recommendedResponse || ''),
     rawOutput: data,
     generatedAt: new Date(),
   };
