@@ -93,7 +93,7 @@ export default function SubmitReport() {
     e.preventDefault();
 
     if (!location?.coordinates) {
-      toast.error('Please provide a location. Drop a pin on the map or enter an address.');
+      toast.error('Please set a location — search by name, tap "My Location", or click the map.');
       return;
     }
 
