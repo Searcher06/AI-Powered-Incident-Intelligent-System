@@ -1,10 +1,10 @@
 # CivicLens
 
-Turn raw citizen reports into real-time incident intelligence using AI -- no manual sorting, no duplicate entries, just clear, actionable insights the moment you need them.
+Turn raw citizen reports into real-time incident intelligence using AI. No manual sorting, no duplicate entries, just clear, actionable insights the moment you need them.
 
 ## Overview
 
-Emergency responders waste precious time piecing together reports about the same flood, road closure, or power outage when they come in from different sources. CivicLens fixes that by ingesting reports from citizens, officers, or social media, understanding what happened through AI, and automatically grouping related events by location. The result is a single source of truth that updates itself as new information arrives, giving decision-makers clarity in seconds.
+Emergency responders and city coordinators waste time piecing together reports about the same flood, road closure, or power outage when they arrive from different sources. CivicLens solves that. It ingests reports from citizens, officers, or social media, understands what happened through Google Gemma AI, and automatically groups related events by location. The result is a single, up-to-date source of truth that gives decision-makers clarity in seconds.
 
 ## System Architecture
 
@@ -84,40 +84,24 @@ sequenceDiagram
 Every time an incident is created or updated, the system triggers a briefing generation. It gathers the incident summary and the most recent reports, sends them to Gemma, and produces a concise situational update.
 
 ### Timeline Tracking
-All changes to an incident are recorded in a timeline: creation, merges, severity changes, briefing updates. Each event captures the before/after state and the reason, giving you a full audit trail.
+All changes to an incident are recorded in a timeline: creation, merges, severity changes, briefing updates. Each event captures the before/after state and the reason, giving a full audit trail.
 
 ### Asynchronous Processing Queue
 The API accepts reports instantly and queues them for background processing. An in-memory queue and a worker loop keep the pipeline running without blocking the client.
 
 ### Image Upload & Evidence Attachment
-Upload images directly to Cloudinary and attach them to reports. The AI can optionally incorporate visual evidence into its analysis.
-
-## Technologies Used
-
-| Category               | Technology                                                                             |
-|------------------------|----------------------------------------------------------------------------------------|
-| Backend Runtime        | [Node.js](https://nodejs.org/)                                                         |
-| Backend Framework      | [Express](https://expressjs.com/)                                                      |
-| Database               | [MongoDB](https://www.mongodb.com/) with [Mongoose](https://mongoosejs.com/)          |
-| AI Service             | [Google Generative AI (Gemma)](https://ai.google.dev/)                                 |
-| Schema Validation      | [Zod](https://zod.dev/)                                                                |
-| Image Hosting          | [Cloudinary](https://cloudinary.com/)                                                  |
-| Security               | [Helmet](https://helmetjs.github.io/), [CORS](https://github.com/expressjs/cors)       |
-| Frontend Framework     | [React](https://react.dev/)                                                            |
-| Build Tool             | [Vite](https://vite.dev/)                                                              |
-| Maps                   | [Leaflet](https://leafletjs.com/), [React Leaflet](https://react-leaflet.js.org/)      |
-| Styling                | [Tailwind CSS](https://tailwindcss.com/)                                               |
+Upload images directly to Cloudinary and attach them to reports. The AI can analyze visual evidence if provided.
 
 ## Installation
 
-1. Clone the repository
+Clone the repository
 
 ```bash
 git clone git@github.com:Searcher06/AI-Powered-Incident-Intelligent-System.git
 cd AI-Powered-Incident-Intelligent-System
 ```
 
-2. Set up the backend
+### Backend
 
 ```bash
 cd backend
@@ -132,7 +116,7 @@ GEMMA_API_KEY=your_google_ai_api_key
 PORT=5000
 ```
 
-Optional: add your Cloudinary credentials if you plan to use the image upload feature:
+Optional: add Cloudinary credentials to enable image uploads:
 
 ```env
 CLOUDINARY_CLOUD_NAME=...
@@ -140,7 +124,7 @@ CLOUDINARY_API_KEY=...
 CLOUDINARY_API_SECRET=...
 ```
 
-3. Set up the frontend (optional)
+### Frontend (optional)
 
 ```bash
 cd ../frontend
@@ -156,15 +140,15 @@ cd backend
 pnpm run dev
 ```
 
-The API will be available at `http://localhost:5000`. The background worker starts automatically and processes any queued reports.
+The API will be available at `http://localhost:5000`. The worker starts automatically.
 
-To quickly test the full pipeline, post the included demo reports while the backend is running:
+To quickly test the pipeline, post the included demo reports while the backend is running:
 
 ```bash
 pnpm run demo:post
 ```
 
-This sends five sample reports (three flood-related, two power-outage related) to `POST /reports` and triggers the intelligence pipeline. After a few seconds, inspect the database to see fused incidents, briefings, and fusion decisions.
+This sends five sample reports (three flood-related, two power-outage related) and triggers the intelligence pipeline.
 
 Start the frontend development server:
 
@@ -177,7 +161,7 @@ The React frontend provides a Command Center dashboard, an incident feed, an int
 
 ## API Documentation
 
-All endpoints are prefixed with the base URL, default `http://localhost:5000`.
+All endpoints are prefixed with `http://localhost:5000`.
 
 ### POST /reports
 
@@ -230,8 +214,6 @@ All endpoints are prefixed with the base URL, default `http://localhost:5000`.
 **Errors**:
 - 500: Internal server error.
 
----
-
 ### GET /reports
 
 **Description**: List all reports, with optional filters.
@@ -255,8 +237,6 @@ All endpoints are prefixed with the base URL, default `http://localhost:5000`.
   }
 }
 ```
-
----
 
 ### GET /reports/:id
 
@@ -283,8 +263,6 @@ All endpoints are prefixed with the base URL, default `http://localhost:5000`.
 - 400: Invalid report ID.
 - 404: Report not found.
 
----
-
 ### GET /incidents
 
 **Description**: List incidents with optional filters.
@@ -310,11 +288,9 @@ All endpoints are prefixed with the base URL, default `http://localhost:5000`.
 }
 ```
 
----
-
 ### GET /incidents/stats
 
-**Description**: Dashboard‑level statistics.
+**Description**: Dashboard-level statistics.
 
 **Response**:
 
@@ -332,8 +308,6 @@ All endpoints are prefixed with the base URL, default `http://localhost:5000`.
   ]
 }
 ```
-
----
 
 ### GET /incidents/:id
 
@@ -361,8 +335,6 @@ All endpoints are prefixed with the base URL, default `http://localhost:5000`.
 - 400: Invalid incident ID.
 - 404: Incident not found.
 
----
-
 ### GET /incidents/:id/reports
 
 **Description**: All reports linked to an incident, paginated.
@@ -377,8 +349,6 @@ All endpoints are prefixed with the base URL, default `http://localhost:5000`.
   "pagination": { ... }
 }
 ```
-
----
 
 ### GET /incidents/:id/timeline
 
@@ -402,8 +372,6 @@ All endpoints are prefixed with the base URL, default `http://localhost:5000`.
 }
 ```
 
----
-
 ### GET /incidents/:id/briefing
 
 **Description**: Latest operational briefing for an incident.
@@ -425,8 +393,6 @@ All endpoints are prefixed with the base URL, default `http://localhost:5000`.
 
 **Errors**:
 - 404: No briefing available yet.
-
----
 
 ### PATCH /incidents/:id/status
 
@@ -452,8 +418,6 @@ All endpoints are prefixed with the base URL, default `http://localhost:5000`.
 - 400: Invalid status value.
 - 404: Incident not found.
 
----
-
 ### POST /upload
 
 **Description**: Upload an image to Cloudinary. Returns a URL that can be included in the `mediaAssets` array when submitting a report.
@@ -477,11 +441,9 @@ Accepted MIME types: `image/jpeg`, `image/jpg`, `image/png`, `image/webp`, `imag
 - 400: No file provided or unsupported type.
 - 503: Cloudinary permissions issue.
 
----
-
 ### GET /health
 
-**Description**: Health check endpoint.
+**Description**: Health check.
 
 **Response**:
 
@@ -492,7 +454,38 @@ Accepted MIME types: `image/jpeg`, `image/jpg`, `image/png`, `image/webp`, `imag
 }
 ```
 
----
+### GET /feed
+
+**Description**: Global activity feed of all timeline events across all incidents, newest first.
+
+**Query Parameters**:
+- `page`, `limit` — pagination
+- `eventType` — filter by type (`created`, `merged`, `severity_changed`, `briefing_updated`, `status_changed`, `confidence_changed`)
+- `severity` — filter by parent incident severity
+
+**Response**:
+
+```json
+{
+  "events": [ ... ],
+  "pagination": { ... }
+}
+```
+
+### GET /feed/reports
+
+**Description**: Raw reports feed, newest first, with optional filters by status or severity.
+
+**Query Parameters**: `status`, `severity`, `page`, `limit`
+
+**Response**:
+
+```json
+{
+  "reports": [ ... ],
+  "pagination": { ... }
+}
+```
 
 ## Environment Variables
 
@@ -505,6 +498,22 @@ Accepted MIME types: `image/jpeg`, `image/jpg`, `image/png`, `image/webp`, `imag
 | `CLOUDINARY_API_KEY` | Cloudinary API key (optional) | - |
 | `CLOUDINARY_API_SECRET` | Cloudinary API secret (optional) | - |
 | `GEMMA_MODEL_VERSION` | Override the Gemma model version | `gemma-4` |
+
+## Technologies Used
+
+| Category | Technology |
+|----------|------------|
+| Backend Runtime | [Node.js](https://nodejs.org/) |
+| Backend Framework | [Express](https://expressjs.com/) |
+| Database | [MongoDB](https://www.mongodb.com/) with [Mongoose](https://mongoosejs.com/) |
+| AI Service | [Google Generative AI (Gemma)](https://ai.google.dev/) |
+| Schema Validation | [Zod](https://zod.dev/) |
+| Image Hosting | [Cloudinary](https://cloudinary.com/) |
+| Security | [Helmet](https://helmetjs.github.io/), [CORS](https://github.com/expressjs/cors) |
+| Frontend Framework | [React](https://react.dev/) |
+| Build Tool | [Vite](https://vite.dev/) |
+| Maps | [Leaflet](https://leafletjs.com/), [React Leaflet](https://react-leaflet.js.org/) |
+| Styling | [Tailwind CSS](https://tailwindcss.com/) |
 
 ## Contributing
 
