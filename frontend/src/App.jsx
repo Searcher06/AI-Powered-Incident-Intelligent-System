@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
+import ScrollToTop from './components/layout/ScrollToTop';
 import Layout from './components/layout/Layout';
 import Dashboard from './pages/Dashboard';
 import IncidentDetail from './pages/IncidentDetail';
@@ -10,6 +11,7 @@ import IncidentFeed from './pages/IncidentFeed';
 export default function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <Toaster position="top-right" richColors closeButton />
       <Routes>
         <Route element={<Layout />}>
@@ -18,8 +20,10 @@ export default function App() {
           <Route path="/map" element={<IntelligenceMap />} />
           <Route path="/feed" element={<IncidentFeed />} />
         </Route>
-        {/* Submit is full-screen — no sidebar layout */}
-        <Route path="/submit" element={<SubmitReport />} />
+        {/* Submit uses the full layout with sidebar */}
+        <Route element={<Layout />}>
+          <Route path="/submit" element={<SubmitReport />} />
+        </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
