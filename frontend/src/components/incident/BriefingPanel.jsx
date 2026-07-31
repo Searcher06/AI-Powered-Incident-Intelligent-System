@@ -1,7 +1,7 @@
 import { formatRelativeTime, formatConfidence } from '../../utils/formatters';
 import Spinner from '../ui/Spinner';
 
-export default function BriefingPanel({ briefing, loading }) {
+export default function BriefingPanel({ briefing, briefingPending, loading }) {
   if (loading) {
     return (
       <section className="card p-5 flex flex-col gap-4 relative overflow-hidden">
@@ -49,6 +49,21 @@ export default function BriefingPanel({ briefing, loading }) {
             )}
           </div>
         </>
+      ) : briefingPending ? (
+        <div className="py-6 text-center">
+          <span className="material-symbols-outlined text-[#f59e0b]" style={{ fontSize: '32px' }}>warning</span>
+          <p className="text-sm font-semibold text-[#191c1e] mt-2">Briefing delayed</p>
+          <p className="text-xs text-[#434655] mt-1 max-w-xs mx-auto">
+            The AI pipeline is taking longer than expected — likely due to high model demand. Refresh the page in a minute to check again.
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-3 text-xs text-[#004ac6] hover:underline flex items-center gap-1 mx-auto"
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: '14px' }}>refresh</span>
+            Refresh page
+          </button>
+        </div>
       ) : (
         <div className="py-6 text-center">
           <span className="material-symbols-outlined text-[#737686]" style={{ fontSize: '32px' }}>hourglass_empty</span>

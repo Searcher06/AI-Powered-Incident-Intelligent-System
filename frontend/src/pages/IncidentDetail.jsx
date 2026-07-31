@@ -15,7 +15,7 @@ import { formatRelativeTime, formatDateTime, formatConfidence } from '../utils/f
 export default function IncidentDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { incident, reports, timeline, briefing, loading, error, refetch } = useIncident(id);
+  const { incident, reports, timeline, briefing, briefingPending, loading, error, refetch } = useIncident(id);
   const [activeTab, setActiveTab] = useState('briefing');
   const [resolving, setResolving] = useState(false);
 
@@ -151,7 +151,7 @@ export default function IncidentDetail() {
           {/* Tab content */}
           {activeTab === 'briefing' && (
             <div className="flex flex-col gap-5">
-              <BriefingPanel briefing={briefing} loading={false} />
+              <BriefingPanel briefing={briefing} briefingPending={briefingPending} loading={false} />
 
               {/* Recommended response */}
               {incident.recommendedResponse && (

@@ -148,8 +148,10 @@ export const BRIEFING_SCHEMA = [
 /**
  * Call the Gemma model.
  *
- * When imageUrl is a Cloudinary URL, sends it as a fileData part for
- * real multimodal vision analysis. Falls back to text-only otherwise.
+ * When imageUrl is a Cloudinary URL, pre-fetches the image and sends it
+ * as inlineData (base64) so we control the network call and can fall back
+ * gracefully if the image is unreachable — instead of letting the Gemma
+ * API make the fetch and throw an opaque "fetch failed" error.
  */
 export async function callModel({ prompt, temperature = 0.0, imageUrl = null }) {
   const c = getGemmaClient();
@@ -157,12 +159,22 @@ export async function callModel({ prompt, temperature = 0.0, imageUrl = null }) 
 
   const parts = [];
 
-  // Only attach image for trusted CDN URLs that the Gemma API can fetch
+  // Pre-fetch the image ourselves and send as base64 inlineData
   if (imageUrl && isAccessibleImageUrl(imageUrl)) {
-    const mimeType = imageUrl.match(/\.(png)$/i) ? 'image/png'
-      : imageUrl.match(/\.(webp)$/i) ? 'image/webp'
-      : 'image/jpeg';
-    parts.push({ fileData: { mimeType, fileUri: imageUrl } });
+    try {
+      const response = await fetch(imageUrl, { signal: AbortSignal.timeout(10000) });
+      if (response.ok) {
+        const buffer = await response.arrayBuffer();
+        const base64 = Buffer.from(buffer).toString('base64');
+        const mimeType = imageUrl.match(/\.png$/i) ? 'image/png'
+          : imageUrl.match(/\.webp$/i) ? 'image/webp'
+          : 'image/jpeg';
+        parts.push({ inlineData: { mimeType, data: base64 } });
+      }
+    } catch (err) {
+      // Image unreachable — continue with text-only analysis
+      console.warn('[callModel] Could not fetch image, falling back to text-only:', err.message);
+    }
   }
 
   parts.push({ text: prompt });

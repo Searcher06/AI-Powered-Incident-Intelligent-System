@@ -7,12 +7,17 @@ const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 8000; // 8 seconds between retries
 
 function isRetryable(err) {
-  // 503 = model overloaded, 429 = rate limit — both are transient
+  // 503 = model overloaded, 429 = rate limit, fetch failed = network blip
+  // All are transient and worth retrying
   return err?.status === 503 || err?.status === 429
     || err?.message?.includes('503')
     || err?.message?.includes('429')
     || err?.message?.includes('UNAVAILABLE')
-    || err?.message?.includes('high demand');
+    || err?.message?.includes('high demand')
+    || err?.message?.includes('fetch failed')
+    || err?.message?.includes('network')
+    || err?.message?.includes('ECONNRESET')
+    || err?.message?.includes('ETIMEDOUT');
 }
 
 function sleep(ms) {
