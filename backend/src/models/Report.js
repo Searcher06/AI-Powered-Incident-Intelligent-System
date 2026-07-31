@@ -16,6 +16,8 @@ const understandingSchema = new Schema(
   {
     model: { type: String, default: 'gemma-4' },
     modelVersion: { type: String, default: 'gemma-4' },
+    detectedLanguage: { type: String, default: 'en' }, // ISO 639-1, detected by Gemma
+    englishSummary: { type: String, default: '' },     // Gemma's English-normalized summary
     category: { type: String, default: '' },
     severity: {
       type: String,
@@ -23,7 +25,7 @@ const understandingSchema = new Schema(
       default: 'medium',
     },
     confidence: { type: Number, min: 0, max: 1, default: 0.5 },
-    summary: { type: String, default: '' },
+    summary: { type: String, default: '' },            // summary in original language
     tags: [{ type: String }],
     affectedInfrastructure: [{ type: String }],
     affectedServices: [{ type: String }],
@@ -56,8 +58,18 @@ const reportSchema = new Schema(
       enum: ['citizen', 'field_officer', 'organization', 'volunteer', 'other'],
       default: 'citizen',
     },
-    description: { type: String, default: '' },
-    language: { type: String, default: 'en' },
+    // ── Raw input from citizen ────────────────────────────────────────────
+    description: { type: String, default: '' },  // kept for backward compat
+    input: {
+      text: { type: String, default: '' },        // original text as submitted
+      language: { type: String, default: 'en' },  // user-declared or detected
+      modality: {
+        type: String,
+        enum: ['text', 'voice', 'image', 'multimodal'],
+        default: 'text',
+      },
+    },
+    language: { type: String, default: 'en' },    // kept for backward compat
     location: {
       text: { type: String, default: '' },
       coordinates: {

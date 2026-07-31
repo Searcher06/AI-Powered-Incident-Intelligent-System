@@ -119,6 +119,8 @@ function parseGemmaOutput(raw, schema) {
 
 // Schema descriptors for each call type — used by parseGemmaOutput
 export const REPORT_ANALYSIS_SCHEMA = [
+  { name: 'detectedLanguage', type: 'string', aliases: ['language', 'detected_language', 'lang'] },
+  { name: 'englishSummary', type: 'string', aliases: ['english_summary', 'summary_english', 'translation'] },
   { name: 'category', type: 'string' },
   { name: 'severity', type: 'enum', values: ['low', 'medium', 'high', 'critical'] },
   { name: 'confidence', type: 'number' },

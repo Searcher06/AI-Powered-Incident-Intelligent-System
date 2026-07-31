@@ -47,7 +47,9 @@ async function fuse(reportId, candidates = []) {
       title: c.title,
       category: c.category,
       severity: c.severity,
-      summary: c.summary,
+      // Use englishSummary for cross-language comparison — ensures a Hausa
+      // report and an English report about the same incident merge correctly
+      summary: c.englishSummary || c.summary,
       location: c.location,
     })),
   });

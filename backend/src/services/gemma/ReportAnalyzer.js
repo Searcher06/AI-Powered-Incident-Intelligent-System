@@ -62,9 +62,19 @@ async function analyzeReport(reportId) {
   await report.save();
 
   const imageUrl = report.mediaAssets?.[0]?.url || '';
+  const description = report.description || report.input?.text || '';
+
+  // Determine modality
+  const hasImage = imageUrl && imageUrl.trim();
+  const hasText = description && description.trim();
+  const modality = hasImage && hasText ? 'multimodal'
+    : hasImage ? 'image'
+    : hasText ? 'text'
+    : 'text';
+
   const prompt = buildReportAnalysisPrompt({
     imageUrl,
-    description: report.description || '',
+    description,
     location: report.location || {},
   });
 
@@ -73,15 +83,17 @@ async function analyzeReport(reportId) {
     prompt,
     temperature: 0.0,
     schema: REPORT_ANALYSIS_SCHEMA,
-    imageUrl, // enables real Gemma vision when image is a Cloudinary URL
+    imageUrl,
   });
   const processingMs = Date.now() - startMs;
 
   const fallback = {
+    detectedLanguage: report.language || 'en',
+    englishSummary: description?.slice(0, 200) || 'Report submitted without description',
     category: 'unknown',
     severity: 'medium',
     confidence: 0.5,
-    summary: report.description?.slice(0, 200) || 'Report submitted without description',
+    summary: description?.slice(0, 200) || 'Report submitted without description',
     tags: [],
     affectedInfrastructure: [],
     affectedServices: [],
@@ -90,8 +102,7 @@ async function analyzeReport(reportId) {
 
   const data = parsed || fallback;
 
-  // Gemma sometimes appends validation markers like "(Correct)" or "(Right)"
-  // Strip them from string fields
+  // Gemma sometimes appends validation markers like "(Correct)" — strip them
   const cleanStr = (s) => typeof s === 'string'
     ? s.replace(/\s*\((Correct|Right|Yes|OK|✓)\)\s*$/i, '').trim()
     : s;
@@ -102,6 +113,8 @@ async function analyzeReport(reportId) {
   const understanding = {
     model: process.env.GEMMA_MODEL_VERSION || 'gemma-4',
     modelVersion: process.env.GEMMA_MODEL_VERSION || 'gemma-4',
+    detectedLanguage: cleanStr(data.detectedLanguage || fallback.detectedLanguage),
+    englishSummary: cleanStr(data.englishSummary || fallback.englishSummary),
     category: sanitizeCategory(data.category || fallback.category),
     severity: ['low', 'medium', 'high', 'critical'].includes(data.severity)
       ? data.severity
@@ -118,6 +131,12 @@ async function analyzeReport(reportId) {
     generatedAt: new Date(),
   };
 
+  // Populate the input sub-document
+  report.input = {
+    text: description,
+    language: understanding.detectedLanguage,
+    modality,
+  };
   report.understanding = understanding;
   report.status = 'matching';
   report.pipeline.analyzedAt = new Date();

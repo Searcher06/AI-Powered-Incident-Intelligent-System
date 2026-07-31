@@ -8,11 +8,25 @@ async function createReport(req, res) {
     const { sourceType, reporterType, description, language, location, timestamp, mediaAssets } = req.body;
     const ts = timestamp ? new Date(timestamp) : new Date();
 
+    // Determine initial modality based on what was submitted
+    const hasImage = Array.isArray(mediaAssets) && mediaAssets.length > 0;
+    const hasText = description && description.trim();
+    const modality = hasImage && hasText ? 'multimodal'
+      : hasImage ? 'image'
+      : hasText ? 'text'
+      : 'text';
+
     const report = await Report.create({
       sourceType,
       reporterType,
       description,
-      language,
+      language: language || 'en',
+      // Populate input sub-document with the raw citizen submission
+      input: {
+        text: description || '',
+        language: language || 'en',
+        modality,
+      },
       location,
       timestamp: ts,
       mediaAssets,

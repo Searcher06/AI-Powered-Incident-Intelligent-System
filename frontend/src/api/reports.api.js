@@ -3,7 +3,6 @@ import client from './client';
 export const uploadImage = async (file) => {
   const formData = new FormData();
   formData.append('image', file);
-
   const { data } = await client.post('/upload', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
@@ -13,4 +12,13 @@ export const uploadImage = async (file) => {
 export const submitReport = async (reportData) => {
   const { data } = await client.post('/reports', reportData);
   return data; // { report, message }
+};
+
+export const transcribeVoice = async (audioBlob) => {
+  const formData = new FormData();
+  formData.append('audio', audioBlob, 'recording.webm');
+  const { data } = await client.post('/transcribe', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return data; // { transcript, detectedLanguage }
 };

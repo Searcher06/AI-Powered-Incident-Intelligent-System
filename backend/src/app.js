@@ -6,6 +6,7 @@ import reportsRouter from './routes/reports.js';
 import incidentsRouter from './routes/incidents.js';
 import uploadRouter from './routes/upload.js';
 import feedRouter from './routes/feed.js';
+import transcribeRouter from './routes/transcribe.js';
 
 const app = express();
 
@@ -21,6 +22,7 @@ app.get('/health', (_req, res) => {
 
 // API routes
 app.use('/upload', uploadRouter);
+app.use('/transcribe', transcribeRouter);
 app.use('/reports', reportsRouter);
 app.use('/incidents', incidentsRouter);
 app.use('/feed', feedRouter);

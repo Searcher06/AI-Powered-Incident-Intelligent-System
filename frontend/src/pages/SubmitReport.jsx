@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { submitReport } from '../api/reports.api';
 import ImageUpload from '../components/form/ImageUpload';
 import LocationPicker from '../components/form/LocationPicker';
+import VoiceInput from '../components/form/VoiceInput';
 
 const SOURCE_TYPES = [
   { value: 'whatsapp', label: 'WhatsApp' },
@@ -39,6 +40,7 @@ export default function SubmitReport() {
   const [sourceType, setSourceType] = useState('other');
   const [language, setLanguage] = useState('en');
   const [location, setLocation] = useState(null);
+  const [voiceModality, setVoiceModality] = useState(false); // true if voice was used
 
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -84,11 +86,25 @@ export default function SubmitReport() {
     setSubmitting(true);
     setStreamLines([]);
     try {
+      // Determine modality
+      const hasImage = !!uploadedImage;
+      const hasVoice = voiceModality;
+      const modality = hasImage && (hasVoice || description)
+        ? 'multimodal'
+        : hasVoice ? 'voice'
+        : hasImage ? 'image'
+        : 'text';
+
       const payload = {
         sourceType,
         reporterType: sourceType === 'officer' ? 'field_officer' : 'citizen',
         description,
         language,
+        input: {
+          text: description,
+          language,
+          modality,
+        },
         location,
         timestamp: new Date().toISOString(),
         mediaAssets: uploadedImage ? [{ url: uploadedImage.url, mimeType: uploadedImage.mimeType }] : [],
@@ -103,12 +119,21 @@ export default function SubmitReport() {
     }
   };
 
+  // Called when Gemini transcribes voice — append to description
+  const handleTranscript = ({ transcript, detectedLanguage }) => {
+    setDescription((prev) => prev ? `${prev} ${transcript}` : transcript);
+    setLanguage(detectedLanguage || 'en');
+    setVoiceModality(true);
+    toast.success(`Voice transcribed in ${detectedLanguage?.toUpperCase() || 'unknown language'} by Gemini`);
+  };
+
   const handleReset = () => {
     setSubmitted(false);
     setSubmitting(false);
     setUploadedImage(null);
     setDescription('');
     setLocation(null);
+    setVoiceModality(false);
     setActiveStep(-1);
     setCompletedSteps([]);
     setStreamLines([]);
@@ -139,6 +164,9 @@ export default function SubmitReport() {
               </label>
               <ImageUpload value={uploadedImage} onUpload={setUploadedImage} />
             </div>
+
+            {/* Voice input */}
+            <VoiceInput onTranscript={handleTranscript} disabled={submitting || submitted} />
 
             {/* Description */}
             <div className="flex flex-col gap-2">
